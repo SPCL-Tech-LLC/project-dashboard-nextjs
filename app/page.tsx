@@ -265,8 +265,8 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-slate-500 font-sans">Loading...</div>
+      <div className="min-h-screen bg-background-light neural-bg flex items-center justify-center">
+        <div className="text-text-sub font-sans">Loading...</div>
       </div>
     )
   }
@@ -283,17 +283,20 @@ export default function Home() {
   ]
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-background-light neural-bg relative">
+      {/* Neural background nodes */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] neural-node bg-primary/20 translate-x-1/2 -translate-y-1/2" />
+        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] neural-node bg-accent-blue/10 -translate-x-1/3 translate-y-1/3" />
+      </div>
+
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
+      <header className="backdrop-blur-md bg-surface-light/80 border-b border-primary/10 sticky top-0 z-50 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-3">
-              <span className="material-symbols-outlined text-[#0891b2] text-3xl">hub</span>
-              <h1
-                className="text-2xl font-bold text-slate-900"
-                style={{ fontFamily: 'Fraunces, serif' }}
-              >
+              <span className="material-symbols-outlined text-primary text-3xl">hub</span>
+              <h1 className="text-2xl font-bold text-text-main font-heading">
                 SPCL Dashboard
               </h1>
             </div>
@@ -304,10 +307,10 @@ export default function Home() {
                   <button
                     key={item.id}
                     onClick={() => switchView(item.id)}
-                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
+                    className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 ${
                       activeView === item.id
-                        ? 'bg-[#0891b2] text-white'
-                        : 'text-slate-600 hover:bg-slate-100'
+                        ? 'bg-primary text-white shadow-lg'
+                        : 'text-text-sub hover:bg-primary/10 hover:text-primary'
                     }`}
                   >
                     {item.label}
@@ -315,20 +318,20 @@ export default function Home() {
                 ))}
                 <button
                   onClick={() => switchView('settings')}
-                  className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
+                  className={`px-3 py-2 rounded-full text-sm font-semibold transition-all duration-200 ${
                     activeView === 'settings'
-                      ? 'bg-[#0891b2] text-white'
-                      : 'text-slate-600 hover:bg-slate-100'
+                      ? 'bg-primary text-white shadow-lg'
+                      : 'text-text-sub hover:bg-primary/10 hover:text-primary'
                   }`}
                 >
                   <span className="material-symbols-outlined text-lg">settings</span>
                 </button>
               </nav>
-              <div className="ml-4 flex items-center gap-2 pl-4 border-l border-slate-200">
-                <span className="text-sm text-slate-600">{user.email}</span>
+              <div className="ml-4 flex items-center gap-2 pl-4 border-l border-primary/20">
+                <span className="text-sm text-text-sub">{user.email}</span>
                 <button
                   onClick={handleLogout}
-                  className="px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition"
+                  className="px-3 py-1.5 text-sm text-text-sub hover:bg-primary/10 hover:text-primary rounded-full transition-all duration-200"
                 >
                   Logout
                 </button>
@@ -338,27 +341,24 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Active Work View */}
         {activeView === 'active' && (
           <div>
             <div className="mb-8">
-              <h2
-                className="text-3xl font-bold text-slate-900 mb-2"
-                style={{ fontFamily: 'Fraunces, serif' }}
-              >
+              <h2 className="text-3xl font-bold text-text-main mb-2 font-heading">
                 Active Work
               </h2>
-              <p className="text-slate-600">See who&apos;s working on what right now</p>
+              <p className="text-text-sub">See who&apos;s working on what right now</p>
             </div>
 
             {/* My Sessions */}
             <div className="mb-8">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold text-slate-900">My Sessions</h3>
+                <h3 className="text-xl font-bold text-text-main">My Sessions</h3>
                 <button
                   onClick={() => setShowModal(true)}
-                  className="px-4 py-2 bg-[#0891b2] text-white rounded-lg font-semibold hover:bg-[#0e7490] transition flex items-center gap-2"
+                  className="bg-primary hover:bg-primary-dark text-white font-semibold px-6 py-3 rounded-full transition-all duration-200 shadow-lg hover:shadow-xl flex items-center gap-2"
                 >
                   <span className="material-symbols-outlined text-lg">add_circle</span>
                   Start Working
@@ -366,14 +366,14 @@ export default function Home() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {mySessions.length === 0 ? (
-                  <div className="col-span-3 text-center py-12 text-slate-500">
-                    <span className="material-symbols-outlined text-6xl mb-4 block text-slate-300">
+                  <div className="col-span-3 text-center py-12 text-text-sub">
+                    <span className="material-symbols-outlined text-6xl mb-4 block text-primary/30">
                       work_off
                     </span>
                     <p>You&apos;re not currently working on anything.</p>
                     <button
                       onClick={() => setShowModal(true)}
-                      className="mt-4 px-4 py-2 bg-[#0891b2] text-white rounded-lg font-semibold hover:bg-[#0e7490] transition"
+                      className="mt-4 bg-primary hover:bg-primary-dark text-white font-semibold px-6 py-3 rounded-full transition-all duration-200 shadow-lg hover:shadow-xl"
                     >
                       Start Working
                     </button>
@@ -382,32 +382,32 @@ export default function Home() {
                   mySessions.map((session) => (
                     <div
                       key={session.id}
-                      className="bg-white rounded-xl p-6 border-2 border-[#0891b2] card-hover"
+                      className="bg-surface-light/80 backdrop-blur-sm rounded-2xl shadow-lg border-2 border-primary/30 p-6 card-hover"
                     >
                       <div className="flex justify-between items-start mb-3">
                         <div>
-                          <h4 className="font-bold text-lg text-slate-900">{session.project_name}</h4>
-                          <p className="text-sm text-slate-600">
+                          <h4 className="font-bold text-lg text-text-main">{session.project_name}</h4>
+                          <p className="text-sm text-text-sub">
                             {formatElapsedTime(session.elapsed_hours || 0)}
                           </p>
                         </div>
-                        <span className="material-symbols-outlined text-[#0891b2] active-pulse">
+                        <span className="material-symbols-outlined text-primary active-pulse">
                           sensors
                         </span>
                       </div>
                       {session.task_description && (
-                        <p className="text-sm text-slate-600 mb-4">{session.task_description}</p>
+                        <p className="text-sm text-text-sub mb-4">{session.task_description}</p>
                       )}
                       <div className="flex gap-2">
                         <button
                           onClick={() => stopWork(session.id)}
-                          className="flex-1 px-3 py-1.5 bg-red-500 text-white text-sm rounded-lg font-semibold hover:bg-red-600 transition"
+                          className="flex-1 px-3 py-1.5 bg-red-500 text-white text-sm rounded-full font-semibold hover:bg-red-600 transition-all duration-200"
                         >
                           Stop
                         </button>
                         <button
                           onClick={() => pingWork(session.id)}
-                          className="px-3 py-1.5 bg-slate-200 text-slate-700 text-sm rounded-lg font-semibold hover:bg-slate-300 transition"
+                          className="px-3 py-1.5 bg-surface-light dark:bg-surface-dark border border-primary/20 text-primary text-sm rounded-full font-semibold hover:border-primary/40 transition-all"
                         >
                           Ping
                         </button>
@@ -420,27 +420,27 @@ export default function Home() {
 
             {/* Team Activity */}
             <div className="mb-8">
-              <h3 className="text-xl font-bold text-slate-900 mb-4">Team Activity</h3>
+              <h3 className="text-xl font-bold text-text-main mb-4">Team Activity</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {teamActivity.length === 0 ? (
-                  <div className="col-span-3 text-center py-8 text-slate-500">
+                  <div className="col-span-3 text-center py-8 text-text-sub">
                     <p>No one else is actively working right now.</p>
                   </div>
                 ) : (
                   teamActivity.map((userItem) => (
                     <div
                       key={userItem.user_id}
-                      className="bg-white rounded-xl p-6 border border-slate-200"
+                      className="bg-surface-light/80 backdrop-blur-sm rounded-2xl shadow-lg border border-primary/10 p-6"
                     >
                       <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-full bg-[#0891b2]/20 flex items-center justify-center">
-                          <span className="material-symbols-outlined text-[#0891b2]">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                          <span className="material-symbols-outlined text-primary">
                             {userItem.user_type === 'agent' ? 'smart_toy' : 'person'}
                           </span>
                         </div>
                         <div>
-                          <h4 className="font-bold text-slate-900">{userItem.user_name}</h4>
-                          <p className="text-xs text-slate-500">
+                          <h4 className="font-bold text-text-main">{userItem.user_name}</h4>
+                          <p className="text-xs text-text-sub">
                             {userItem.project_count} project
                             {userItem.project_count > 1 ? 's' : ''}
                           </p>
@@ -450,7 +450,7 @@ export default function Home() {
                         {userItem.projects.map((p) => (
                           <div key={p} className="flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                            <span className="text-sm text-slate-600">{p}</span>
+                            <span className="text-sm text-text-sub">{p}</span>
                           </div>
                         ))}
                       </div>
@@ -462,30 +462,30 @@ export default function Home() {
 
             {/* Project Summary */}
             <div>
-              <h3 className="text-xl font-bold text-slate-900 mb-4">Projects Being Worked On</h3>
+              <h3 className="text-xl font-bold text-text-main mb-4">Projects Being Worked On</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {projectSummary.length === 0 ? (
-                  <div className="col-span-3 text-center py-8 text-slate-500">
+                  <div className="col-span-3 text-center py-8 text-text-sub">
                     <p>No projects are currently being worked on.</p>
                   </div>
                 ) : (
                   projectSummary.map((proj) => (
                     <div
                       key={proj.project_name}
-                      className="bg-white rounded-xl p-6 border border-slate-200"
+                      className="bg-surface-light/80 backdrop-blur-sm rounded-2xl shadow-lg border border-primary/10 p-6"
                     >
-                      <h4 className="font-bold text-lg text-slate-900 mb-2">
+                      <h4 className="font-bold text-lg text-text-main mb-2">
                         {proj.project_name}
                       </h4>
                       <div className="flex items-center gap-2 mb-3">
-                        <span className="material-symbols-outlined text-[#0891b2] text-sm">
+                        <span className="material-symbols-outlined text-primary text-sm">
                           group
                         </span>
-                        <span className="text-sm text-slate-600">{proj.active_count} working</span>
+                        <span className="text-sm text-text-sub">{proj.active_count} working</span>
                       </div>
                       <div className="space-y-1">
                         {proj.workers.map((w) => (
-                          <div key={w} className="text-sm text-slate-600">
+                          <div key={w} className="text-sm text-text-sub">
                             • {w}
                           </div>
                         ))}
@@ -503,17 +503,14 @@ export default function Home() {
           <div>
             <div className="mb-8 flex justify-between items-center">
               <div>
-                <h2
-                  className="text-3xl font-bold text-slate-900 mb-2"
-                  style={{ fontFamily: 'Fraunces, serif' }}
-                >
+                <h2 className="text-3xl font-bold text-text-main mb-2 font-heading">
                   Projects
                 </h2>
-                <p className="text-slate-600">All repositories in your organization</p>
+                <p className="text-text-sub">All repositories in your organization</p>
               </div>
               <button
                 onClick={loadProjects}
-                className="px-4 py-2 bg-[#0891b2] text-white rounded-lg font-semibold hover:bg-[#0e7490] transition flex items-center gap-2"
+                className="bg-primary hover:bg-primary-dark text-white font-semibold px-6 py-3 rounded-full transition-all duration-200 shadow-lg hover:shadow-xl flex items-center gap-2"
               >
                 <span className="material-symbols-outlined text-lg">refresh</span>
                 Refresh
@@ -521,9 +518,9 @@ export default function Home() {
             </div>
 
             {reposLoading ? (
-              <div className="text-center py-12 text-slate-500">Loading projects...</div>
+              <div className="text-center py-12 text-text-sub">Loading projects...</div>
             ) : repos.length === 0 ? (
-              <div className="text-center py-12 text-slate-500">No repositories found.</div>
+              <div className="text-center py-12 text-text-sub">No repositories found.</div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {repos.map((repo) => {
@@ -534,21 +531,21 @@ export default function Home() {
                   return (
                     <div
                       key={repo.name}
-                      className="bg-white rounded-xl p-6 border border-slate-200 card-hover"
+                      className="bg-surface-light/80 backdrop-blur-sm rounded-2xl shadow-lg border border-primary/10 p-6 card-hover"
                     >
-                      <h3 className="font-bold text-lg text-slate-900 mb-2">{repo.name}</h3>
+                      <h3 className="font-bold text-lg text-text-main mb-2">{repo.name}</h3>
                       {repo.description && (
-                        <p className="text-sm text-slate-600 mb-4">{repo.description}</p>
+                        <p className="text-sm text-text-sub mb-4">{repo.description}</p>
                       )}
                       <div className="space-y-2 text-sm">
-                        <div className="flex items-center gap-2 text-slate-600">
+                        <div className="flex items-center gap-2 text-text-sub">
                           <span className="material-symbols-outlined text-sm">commit</span>
                           <span>
                             Last commit:{' '}
                             {repo.updated_at ? formatDate(repo.updated_at) : 'Unknown'}
                           </span>
                         </div>
-                        <div className="flex items-center gap-2 text-slate-600">
+                        <div className="flex items-center gap-2 text-text-sub">
                           <span className="material-symbols-outlined text-sm">call_split</span>
                           <span>Branch: {repo.default_branch || 'main'}</span>
                         </div>
@@ -559,7 +556,7 @@ export default function Home() {
                           </div>
                         )}
                         {hasVercel && (
-                          <div className="flex items-center gap-2 text-slate-600">
+                          <div className="flex items-center gap-2 text-text-sub">
                             <span className="material-symbols-outlined text-sm">cloud</span>
                             <span>Deployed on Vercel</span>
                           </div>
@@ -570,7 +567,7 @@ export default function Home() {
                           href={repo.html_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="px-3 py-2 bg-[#0891b2] text-white text-sm text-center rounded-lg font-semibold hover:bg-[#0e7490] transition"
+                          className="bg-primary hover:bg-primary-dark text-white text-sm text-center font-semibold px-4 py-2 rounded-full transition-all duration-200 shadow-md hover:shadow-lg"
                         >
                           GitHub
                         </a>
@@ -579,7 +576,7 @@ export default function Home() {
                             href={meta.supabase_project_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="px-3 py-2 bg-emerald-600 text-white text-sm text-center rounded-lg font-semibold hover:bg-emerald-700 transition"
+                            className="px-4 py-2 bg-emerald-600 text-white text-sm text-center rounded-full font-semibold hover:bg-emerald-700 transition-all duration-200"
                           >
                             Supabase
                           </a>
@@ -589,7 +586,7 @@ export default function Home() {
                             href={meta.vercel_project_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="px-3 py-2 bg-slate-700 text-white text-sm text-center rounded-lg font-semibold hover:bg-slate-800 transition"
+                            className="px-4 py-2 bg-slate-700 text-white text-sm text-center rounded-full font-semibold hover:bg-slate-800 transition-all duration-200"
                           >
                             Vercel
                           </a>
@@ -599,7 +596,7 @@ export default function Home() {
                             href={meta.vercel_deployment_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="px-3 py-2 bg-blue-600 text-white text-sm text-center rounded-lg font-semibold hover:bg-blue-700 transition"
+                            className="px-4 py-2 bg-accent-blue text-white text-sm text-center rounded-full font-semibold hover:bg-blue-600 transition-all duration-200"
                           >
                             Live Site
                           </a>
@@ -616,17 +613,14 @@ export default function Home() {
         {/* Kanban View */}
         {activeView === 'kanban' && (
           <div>
-            <h2
-              className="text-3xl font-bold text-slate-900 mb-6"
-              style={{ fontFamily: 'Fraunces, serif' }}
-            >
+            <h2 className="text-3xl font-bold text-text-main mb-6 font-heading">
               Kanban Board
             </h2>
             <div className="grid grid-cols-3 gap-6">
               {['To Do', 'In Progress', 'Done'].map((column) => (
-                <div key={column} className="bg-slate-100 rounded-xl p-4">
-                  <h3 className="font-bold text-slate-700 mb-4">{column}</h3>
-                  <div className="text-center py-8 text-slate-400 text-sm bg-white rounded-lg border border-slate-200">
+                <div key={column} className="bg-surface-light/60 backdrop-blur-sm rounded-2xl border border-primary/10 p-4">
+                  <h3 className="font-bold text-text-main mb-4">{column}</h3>
+                  <div className="text-center py-8 text-text-sub text-sm bg-surface-light/80 rounded-xl border border-primary/10">
                     Coming soon...
                   </div>
                 </div>
@@ -638,36 +632,33 @@ export default function Home() {
         {/* Activity View */}
         {activeView === 'activity' && (
           <div>
-            <h2
-              className="text-3xl font-bold text-slate-900 mb-6"
-              style={{ fontFamily: 'Fraunces, serif' }}
-            >
+            <h2 className="text-3xl font-bold text-text-main mb-6 font-heading">
               Recent Activity
             </h2>
             {activityLoading ? (
-              <div className="text-center py-12 text-slate-500">Loading activity...</div>
+              <div className="text-center py-12 text-text-sub">Loading activity...</div>
             ) : activityFeed.length === 0 ? (
-              <div className="text-center py-12 text-slate-500">No recent activity</div>
+              <div className="text-center py-12 text-text-sub">No recent activity</div>
             ) : (
               <div className="space-y-4">
                 {activityFeed.map((entry) => (
                   <div
                     key={entry.id}
-                    className="bg-white rounded-xl p-4 border border-slate-200"
+                    className="bg-surface-light/80 backdrop-blur-sm rounded-2xl shadow-lg border border-primary/10 p-4"
                   >
                     <div className="flex items-center gap-3">
-                      <span className="material-symbols-outlined text-[#0891b2]">
+                      <span className="material-symbols-outlined text-primary">
                         {entry.user_type === 'agent' ? 'smart_toy' : 'person'}
                       </span>
                       <div className="flex-1">
-                        <p className="text-sm font-semibold text-slate-900">
+                        <p className="text-sm font-semibold text-text-main">
                           {entry.user_name} worked on{' '}
-                          <span className="text-[#0891b2]">{entry.project_name}</span>
+                          <span className="text-primary">{entry.project_name}</span>
                         </p>
                         {entry.task_description && (
-                          <p className="text-xs text-slate-600">{entry.task_description}</p>
+                          <p className="text-xs text-text-sub">{entry.task_description}</p>
                         )}
-                        <p className="text-xs text-slate-500 mt-1">
+                        <p className="text-xs text-text-sub mt-1">
                           {entry.duration_minutes} minutes • {formatDate(entry.ended_at_iso)}
                         </p>
                       </div>
@@ -682,43 +673,40 @@ export default function Home() {
         {/* Settings View */}
         {activeView === 'settings' && (
           <div>
-            <h2
-              className="text-3xl font-bold text-slate-900 mb-6"
-              style={{ fontFamily: 'Fraunces, serif' }}
-            >
+            <h2 className="text-3xl font-bold text-text-main mb-6 font-heading">
               Settings
             </h2>
             <div className="max-w-2xl">
-              <div className="bg-white rounded-xl p-6 space-y-6">
+              <div className="bg-surface-light/80 backdrop-blur-sm rounded-2xl shadow-lg border border-primary/10 p-6 space-y-6">
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  <label className="block text-sm font-semibold text-text-main mb-2">
                     User ID (Email)
                   </label>
                   <input
                     type="text"
                     value={settingsUserId}
                     readOnly
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-500 cursor-not-allowed"
+                    className="w-full px-4 py-2 bg-background-light border border-primary/20 rounded-xl text-text-sub cursor-not-allowed"
                   />
-                  <p className="text-xs text-slate-500 mt-1">
+                  <p className="text-xs text-text-sub mt-1">
                     Managed by Supabase authentication
                   </p>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  <label className="block text-sm font-semibold text-text-main mb-2">
                     Display Name
                   </label>
                   <input
                     type="text"
                     value={settingsUserName}
                     onChange={(e) => setSettingsUserName(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg"
+                    className="w-full px-4 py-2 bg-background-light border border-primary/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
                     placeholder="Your Name"
                   />
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="px-6 py-2 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition"
+                  className="px-6 py-2 bg-red-500 text-white rounded-full font-semibold hover:bg-red-600 transition-all duration-200 shadow-md"
                 >
                   Logout
                 </button>
@@ -730,23 +718,20 @@ export default function Home() {
 
       {/* Start Work Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
-            <h3
-              className="text-2xl font-bold text-slate-900 mb-4"
-              style={{ fontFamily: 'Fraunces, serif' }}
-            >
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-surface-light/90 backdrop-blur-md rounded-2xl shadow-xl border border-primary/10 p-6 max-w-md w-full mx-4">
+            <h3 className="text-2xl font-bold text-text-main mb-4 font-heading">
               Start Working
             </h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                <label className="block text-sm font-semibold text-text-main mb-2">
                   Select Project
                 </label>
                 <select
                   value={modalProject}
                   onChange={(e) => setModalProject(e.target.value)}
-                  className="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
+                  className="w-full px-4 py-2 bg-background-light border border-primary/20 rounded-xl text-text-main focus:outline-none focus:ring-2 focus:ring-primary/50"
                 >
                   <option value="">Select a project...</option>
                   {repos.map((repo) => (
@@ -757,13 +742,13 @@ export default function Home() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                <label className="block text-sm font-semibold text-text-main mb-2">
                   What are you working on?
                 </label>
                 <textarea
                   value={modalDescription}
                   onChange={(e) => setModalDescription(e.target.value)}
-                  className="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg"
+                  className="w-full px-4 py-2 bg-background-light border border-primary/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
                   rows={3}
                   placeholder="Describe what you're working on..."
                 />
@@ -771,13 +756,13 @@ export default function Home() {
               <div className="flex gap-3">
                 <button
                   onClick={startWork}
-                  className="flex-1 px-4 py-2 bg-[#0891b2] text-white rounded-lg font-semibold hover:bg-[#0e7490] transition"
+                  className="flex-1 bg-primary hover:bg-primary-dark text-white font-semibold px-6 py-3 rounded-full transition-all duration-200 shadow-lg hover:shadow-xl"
                 >
                   Start
                 </button>
                 <button
                   onClick={hideStartWorkModal}
-                  className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg font-semibold hover:bg-slate-300 transition"
+                  className="bg-surface-light dark:bg-surface-dark border border-primary/20 text-primary px-6 py-3 rounded-full hover:border-primary/40 transition-all font-semibold"
                 >
                   Cancel
                 </button>

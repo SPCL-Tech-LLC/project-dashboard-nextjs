@@ -28,24 +28,27 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-background-dark neural-bg relative flex items-center justify-center p-4">
+      {/* Neural background nodes */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] neural-node bg-primary/20 translate-x-1/2 -translate-y-1/2" />
+        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] neural-node bg-accent-blue/10 -translate-x-1/3 translate-y-1/3" />
+      </div>
+
+      <div className="relative z-10 w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-[#0891b2]/20 rounded-2xl mb-4">
-            <span className="material-symbols-outlined text-[#0891b2] text-4xl">hub</span>
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/20 rounded-2xl mb-4 backdrop-blur-sm border border-primary/20">
+            <span className="material-symbols-outlined text-primary text-4xl">hub</span>
           </div>
-          <h1
-            className="text-3xl font-bold text-white"
-            style={{ fontFamily: 'Fraunces, serif' }}
-          >
+          <h1 className="text-3xl font-bold text-white font-heading">
             SPCL Dashboard
           </h1>
           <p className="text-slate-400 mt-2">Sign in to your account</p>
         </div>
 
         {/* Form */}
-        <div className="bg-slate-800 rounded-2xl p-8 border border-slate-700">
+        <div className="bg-surface-dark/80 backdrop-blur-md rounded-2xl p-8 border border-primary/10 shadow-xl">
           <form onSubmit={handleLogin} className="space-y-5">
             <div>
               <label className="block text-sm font-semibold text-slate-300 mb-2">
@@ -57,7 +60,7 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 placeholder="you@spcl.tech"
-                className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0891b2] focus:border-transparent"
+                className="w-full px-4 py-3 bg-background-dark/80 border border-primary/20 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-transparent"
               />
             </div>
             <div>
@@ -70,7 +73,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 placeholder="••••••••"
-                className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0891b2] focus:border-transparent"
+                className="w-full px-4 py-3 bg-background-dark/80 border border-primary/20 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-transparent"
               />
             </div>
 
@@ -83,7 +86,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-[#0891b2] text-white font-semibold rounded-xl hover:bg-[#0e7490] transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 bg-primary hover:bg-primary-dark text-white font-semibold rounded-full transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Signing in...' : 'Sign in'}
             </button>
