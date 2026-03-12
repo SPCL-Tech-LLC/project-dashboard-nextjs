@@ -1,83 +1,214 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
-interface WorkEntry {
+interface WorkSession {
   id: string
   project_name: string
+  task_description?: string | null
+  elapsed_hours?: number
   started_at: string
-  ended_at: string | null
-  notes: string | null
+  user_id: string
+  user_name?: string
+  user_type?: string
 }
 
-interface Project {
-  id: string
+interface UserSummary {
+  user_id: string
+  user_name: string
+  user_type: string
+  project_count: number
+  projects: string[]
+}
+
+interface ProjectSummary {
   project_name: string
-  repo_url: string | null
-  status: string
-  tags: string[]
-  notes: string | null
-  last_worked_at: string
+  active_count: number
+  workers: string[]
+}
+
+interface ActivityEntry {
+  id: string
+  user_name: string
+  project_name: string
+  task_description?: string | null
+  duration_minutes: number
+  ended_at_iso: string
+  user_type: string
+}
+
+interface Repo {
+  name: string
+  full_name?: string
+  description: string | null
+  html_url: string
+  updated_at: string | null
+  default_branch?: string
+  language?: string | null
+  stargazers_count?: number
+  metadata?: {
+    supabase_project_url?: string | null
+    supabase_project_id?: string | null
+    vercel_project_url?: string | null
+    vercel_deployment_url?: string | null
+  } | null
+}
+
+function formatElapsedTime(hours: number): string {
+  if (hours < 1) return `${Math.round(hours * 60)} minutes`
+  if (hours < 24) return `${hours.toFixed(1)} hours`
+  return `${Math.floor(hours / 24)} days`
+}
+
+function formatDate(dateStr: string): string {
+  const date = new Date(dateStr)
+  const now = new Date()
+  const diffHrs = (now.getTime() - date.getTime()) / (1000 * 60 * 60)
+  if (diffHrs < 1) return `${Math.round(diffHrs * 60)} min ago`
+  if (diffHrs < 24) return `${Math.round(diffHrs)} hr ago`
+  if (diffHrs < 48) return 'yesterday'
+  return date.toLocaleDateString()
+}
+
+function getUserName(userId: string): string {
+  if (userId.includes('@')) {
+    const name = userId.split('@')[0]
+    return name.charAt(0).toUpperCase() + name.slice(1)
+  }
+  return userId
 }
 
 export default function Home() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [workEntries, setWorkEntries] = useState<WorkEntry[]>([])
-  const [projects, setProjects] = useState<Project[]>([])
-  const [activeWork, setActiveWork] = useState<WorkEntry | null>(null)
-  const [newProjectName, setNewProjectName] = useState('')
+  const [activeView, setActiveView] = useState('active')
+
+  // Active work state
+  const [mySessions, setMySessions] = useState<WorkSession[]>([])
+  const [teamActivity, setTeamActivity] = useState<UserSummary[]>([])
+  const [projectSummary, setProjectSummary] = useState<ProjectSummary[]>([])
+
+  // Projects state
+  const [repos, setRepos] = useState<Repo[]>([])
+  const [reposLoading, setReposLoading] = useState(false)
+
+  // Activity state
+  const [activityFeed, setActivityFeed] = useState<ActivityEntry[]>([])
+  const [activityLoading, setActivityLoading] = useState(false)
+
+  // Modal state
+  const [showModal, setShowModal] = useState(false)
+  const [modalProject, setModalProject] = useState('')
+  const [modalDescription, setModalDescription] = useState('')
+
+  // Settings state
+  const [settingsUserId, setSettingsUserId] = useState('')
+  const [settingsUserName, setSettingsUserName] = useState('')
+
   const router = useRouter()
 
+  const loadActiveWork = useCallback(async (userId: string) => {
+    try {
+      const [sessionsRes, userSummaryRes, projectSummaryRes] = await Promise.all([
+        fetch(`/api/active-work/active?user_id=${encodeURIComponent(userId)}`),
+        fetch('/api/active-work/user-summary'),
+        fetch('/api/active-work/project-summary'),
+      ])
+
+      if (sessionsRes.ok) {
+        const sessions = await sessionsRes.json()
+        setMySessions(Array.isArray(sessions) ? sessions : [])
+      }
+      if (userSummaryRes.ok) {
+        const summary = await userSummaryRes.json()
+        setTeamActivity(
+          (Array.isArray(summary) ? summary : []).filter(
+            (u: UserSummary) => u.user_id !== userId
+          )
+        )
+      }
+      if (projectSummaryRes.ok) {
+        const ps = await projectSummaryRes.json()
+        setProjectSummary(Array.isArray(ps) ? ps : [])
+      }
+    } catch (error) {
+      console.error('Error loading active work:', error)
+    }
+  }, [])
+
+  const loadProjects = useCallback(async () => {
+    setReposLoading(true)
+    try {
+      const res = await fetch('/api/repos')
+      if (res.ok) {
+        const data = await res.json()
+        setRepos(data.repos || [])
+      }
+    } catch (error) {
+      console.error('Error loading projects:', error)
+    } finally {
+      setReposLoading(false)
+    }
+  }, [])
+
+  const loadActivity = useCallback(async () => {
+    setActivityLoading(true)
+    try {
+      const res = await fetch('/api/active-work/history?days=7')
+      if (res.ok) {
+        const data = await res.json()
+        setActivityFeed(Array.isArray(data) ? data : [])
+      }
+    } catch (error) {
+      console.error('Error loading activity:', error)
+    } finally {
+      setActivityLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
-    // Check auth status
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         setUser(session.user)
-        loadData()
+        const userId = session.user.email || session.user.id
+        setSettingsUserId(userId)
+        setSettingsUserName(getUserName(userId))
+        loadActiveWork(userId)
+        loadProjects()
       } else {
         router.push('/login')
       }
       setLoading(false)
     })
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
         setUser(session.user)
-        loadData()
       } else {
         router.push('/login')
       }
     })
 
     return () => subscription.unsubscribe()
-  }, [router])
+  }, [router, loadActiveWork, loadProjects])
 
-  const loadData = async () => {
-    try {
-      // Load work entries
-      const workRes = await fetch('/api/work')
-      if (workRes.ok) {
-        const workData = await workRes.json()
-        setWorkEntries(workData.work || [])
-        
-        // Find active work (no end time)
-        const active = workData.work?.find((w: WorkEntry) => !w.ended_at)
-        setActiveWork(active || null)
-      }
+  // Auto-refresh active work every 30 seconds
+  useEffect(() => {
+    if (!user) return
+    const userId = user.email || user.id
+    const interval = setInterval(() => loadActiveWork(userId), 30000)
+    return () => clearInterval(interval)
+  }, [user, loadActiveWork])
 
-      // Load projects
-      const projRes = await fetch('/api/projects')
-      if (projRes.ok) {
-        const projData = await projRes.json()
-        setProjects(projData.projects || [])
-      }
-    } catch (error) {
-      console.error('Failed to load data:', error)
-    }
+  const switchView = (view: string) => {
+    setActiveView(view)
+    if (view === 'active' && user) loadActiveWork(user.email || user.id)
+    if (view === 'projects') loadProjects()
+    if (view === 'activity') loadActivity()
   }
 
   const handleLogout = async () => {
@@ -85,183 +216,576 @@ export default function Home() {
     router.push('/login')
   }
 
+  const hideStartWorkModal = () => {
+    setShowModal(false)
+    setModalProject('')
+    setModalDescription('')
+  }
+
   const startWork = async () => {
-    if (!newProjectName.trim() || !user) return
+    if (!modalProject.trim() || !user) return
+    const userId = user.email || user.id
+    const userName = getUserName(userId)
 
     try {
-      const res = await fetch('/api/work', {
+      await fetch('/api/active-work/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: user.id,
-          project_name: newProjectName.trim(),
+          user_id: userId,
+          user_name: userName,
+          project_name: modalProject,
+          task_description: modalDescription || null,
+          user_type: 'human',
         }),
       })
-
-      if (res.ok) {
-        setNewProjectName('')
-        loadData()
-      }
+      hideStartWorkModal()
+      loadActiveWork(userId)
     } catch (error) {
-      console.error('Failed to start work:', error)
+      console.error('Error starting work:', error)
     }
   }
 
-  const stopWork = async () => {
-    if (!activeWork) return
-
+  const stopWork = async (sessionId: string) => {
     try {
-      const res = await fetch('/api/work', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: activeWork.id,
-          notes: '',
-        }),
-      })
-
-      if (res.ok) {
-        loadData()
-      }
+      await fetch(`/api/active-work/stop/${sessionId}`, { method: 'POST' })
+      if (user) loadActiveWork(user.email || user.id)
     } catch (error) {
-      console.error('Failed to stop work:', error)
+      console.error('Error stopping work:', error)
+    }
+  }
+
+  const pingWork = async (sessionId: string) => {
+    try {
+      await fetch(`/api/active-work/ping/${sessionId}`, { method: 'POST' })
+    } catch (error) {
+      console.error('Error pinging work:', error)
     }
   }
 
   if (loading) {
-    return <div className="container"><p>Loading...</p></div>
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-slate-500 font-sans">Loading...</div>
+      </div>
+    )
   }
 
-  if (!user) {
-    return null // Will redirect to login
-  }
+  if (!user) return null
+
+  const userId = user.email || user.id
+
+  const navItems = [
+    { id: 'active', label: 'Active Work' },
+    { id: 'projects', label: 'Projects' },
+    { id: 'kanban', label: 'Kanban' },
+    { id: 'activity', label: 'Activity' },
+  ]
 
   return (
-    <div className="container">
-      <header style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        marginBottom: '30px',
-        padding: '20px 0',
-        borderBottom: '2px solid #ddd'
-      }}>
-        <h1 style={{ margin: 0 }}>SPCL Project Dashboard</h1>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          <span>{user.email}</span>
-          <button onClick={handleLogout}>Logout</button>
+    <div className="min-h-screen">
+      {/* Header */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center gap-3">
+              <span className="material-symbols-outlined text-[#0891b2] text-3xl">hub</span>
+              <h1
+                className="text-2xl font-bold text-slate-900"
+                style={{ fontFamily: 'Fraunces, serif' }}
+              >
+                SPCL Dashboard
+              </h1>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <nav className="flex gap-1">
+                {navItems.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => switchView(item.id)}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
+                      activeView === item.id
+                        ? 'bg-[#0891b2] text-white'
+                        : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+                <button
+                  onClick={() => switchView('settings')}
+                  className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
+                    activeView === 'settings'
+                      ? 'bg-[#0891b2] text-white'
+                      : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-lg">settings</span>
+                </button>
+              </nav>
+              <div className="ml-4 flex items-center gap-2 pl-4 border-l border-slate-200">
+                <span className="text-sm text-slate-600">{user.email}</span>
+                <button
+                  onClick={handleLogout}
+                  className="px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition"
+                >
+                  Logout
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </header>
 
-      {/* Active Work Section */}
-      <section style={{ marginBottom: '40px', padding: '20px', background: 'white', borderRadius: '8px' }}>
-        <h2 style={{ marginBottom: '20px' }}>Active Work</h2>
-        
-        {activeWork ? (
-          <div style={{ padding: '15px', background: '#e8f5e9', borderRadius: '4px', marginBottom: '15px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <strong>{activeWork.project_name}</strong>
-                <div style={{ fontSize: '14px', color: '#666', marginTop: '5px' }}>
-                  Started: {new Date(activeWork.started_at).toLocaleTimeString()}
-                </div>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Active Work View */}
+        {activeView === 'active' && (
+          <div>
+            <div className="mb-8">
+              <h2
+                className="text-3xl font-bold text-slate-900 mb-2"
+                style={{ fontFamily: 'Fraunces, serif' }}
+              >
+                Active Work
+              </h2>
+              <p className="text-slate-600">See who&apos;s working on what right now</p>
+            </div>
+
+            {/* My Sessions */}
+            <div className="mb-8">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold text-slate-900">My Sessions</h3>
+                <button
+                  onClick={() => setShowModal(true)}
+                  className="px-4 py-2 bg-[#0891b2] text-white rounded-lg font-semibold hover:bg-[#0e7490] transition flex items-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-lg">add_circle</span>
+                  Start Working
+                </button>
               </div>
-              <button onClick={stopWork} style={{ background: '#f44336' }}>
-                Stop Work
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {mySessions.length === 0 ? (
+                  <div className="col-span-3 text-center py-12 text-slate-500">
+                    <span className="material-symbols-outlined text-6xl mb-4 block text-slate-300">
+                      work_off
+                    </span>
+                    <p>You&apos;re not currently working on anything.</p>
+                    <button
+                      onClick={() => setShowModal(true)}
+                      className="mt-4 px-4 py-2 bg-[#0891b2] text-white rounded-lg font-semibold hover:bg-[#0e7490] transition"
+                    >
+                      Start Working
+                    </button>
+                  </div>
+                ) : (
+                  mySessions.map((session) => (
+                    <div
+                      key={session.id}
+                      className="bg-white rounded-xl p-6 border-2 border-[#0891b2] card-hover"
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <h4 className="font-bold text-lg text-slate-900">{session.project_name}</h4>
+                          <p className="text-sm text-slate-600">
+                            {formatElapsedTime(session.elapsed_hours || 0)}
+                          </p>
+                        </div>
+                        <span className="material-symbols-outlined text-[#0891b2] active-pulse">
+                          sensors
+                        </span>
+                      </div>
+                      {session.task_description && (
+                        <p className="text-sm text-slate-600 mb-4">{session.task_description}</p>
+                      )}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => stopWork(session.id)}
+                          className="flex-1 px-3 py-1.5 bg-red-500 text-white text-sm rounded-lg font-semibold hover:bg-red-600 transition"
+                        >
+                          Stop
+                        </button>
+                        <button
+                          onClick={() => pingWork(session.id)}
+                          className="px-3 py-1.5 bg-slate-200 text-slate-700 text-sm rounded-lg font-semibold hover:bg-slate-300 transition"
+                        >
+                          Ping
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Team Activity */}
+            <div className="mb-8">
+              <h3 className="text-xl font-bold text-slate-900 mb-4">Team Activity</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {teamActivity.length === 0 ? (
+                  <div className="col-span-3 text-center py-8 text-slate-500">
+                    <p>No one else is actively working right now.</p>
+                  </div>
+                ) : (
+                  teamActivity.map((userItem) => (
+                    <div
+                      key={userItem.user_id}
+                      className="bg-white rounded-xl p-6 border border-slate-200"
+                    >
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-10 h-10 rounded-full bg-[#0891b2]/20 flex items-center justify-center">
+                          <span className="material-symbols-outlined text-[#0891b2]">
+                            {userItem.user_type === 'agent' ? 'smart_toy' : 'person'}
+                          </span>
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-slate-900">{userItem.user_name}</h4>
+                          <p className="text-xs text-slate-500">
+                            {userItem.project_count} project
+                            {userItem.project_count > 1 ? 's' : ''}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        {userItem.projects.map((p) => (
+                          <div key={p} className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                            <span className="text-sm text-slate-600">{p}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Project Summary */}
+            <div>
+              <h3 className="text-xl font-bold text-slate-900 mb-4">Projects Being Worked On</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {projectSummary.length === 0 ? (
+                  <div className="col-span-3 text-center py-8 text-slate-500">
+                    <p>No projects are currently being worked on.</p>
+                  </div>
+                ) : (
+                  projectSummary.map((proj) => (
+                    <div
+                      key={proj.project_name}
+                      className="bg-white rounded-xl p-6 border border-slate-200"
+                    >
+                      <h4 className="font-bold text-lg text-slate-900 mb-2">
+                        {proj.project_name}
+                      </h4>
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="material-symbols-outlined text-[#0891b2] text-sm">
+                          group
+                        </span>
+                        <span className="text-sm text-slate-600">{proj.active_count} working</span>
+                      </div>
+                      <div className="space-y-1">
+                        {proj.workers.map((w) => (
+                          <div key={w} className="text-sm text-slate-600">
+                            • {w}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Projects View */}
+        {activeView === 'projects' && (
+          <div>
+            <div className="mb-8 flex justify-between items-center">
+              <div>
+                <h2
+                  className="text-3xl font-bold text-slate-900 mb-2"
+                  style={{ fontFamily: 'Fraunces, serif' }}
+                >
+                  Projects
+                </h2>
+                <p className="text-slate-600">All repositories in your organization</p>
+              </div>
+              <button
+                onClick={loadProjects}
+                className="px-4 py-2 bg-[#0891b2] text-white rounded-lg font-semibold hover:bg-[#0e7490] transition flex items-center gap-2"
+              >
+                <span className="material-symbols-outlined text-lg">refresh</span>
+                Refresh
               </button>
             </div>
+
+            {reposLoading ? (
+              <div className="text-center py-12 text-slate-500">Loading projects...</div>
+            ) : repos.length === 0 ? (
+              <div className="text-center py-12 text-slate-500">No repositories found.</div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {repos.map((repo) => {
+                  const meta = repo.metadata || {}
+                  const hasSupabase = meta.supabase_project_url
+                  const hasVercel = meta.vercel_project_url || meta.vercel_deployment_url
+
+                  return (
+                    <div
+                      key={repo.name}
+                      className="bg-white rounded-xl p-6 border border-slate-200 card-hover"
+                    >
+                      <h3 className="font-bold text-lg text-slate-900 mb-2">{repo.name}</h3>
+                      {repo.description && (
+                        <p className="text-sm text-slate-600 mb-4">{repo.description}</p>
+                      )}
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center gap-2 text-slate-600">
+                          <span className="material-symbols-outlined text-sm">commit</span>
+                          <span>
+                            Last commit:{' '}
+                            {repo.updated_at ? formatDate(repo.updated_at) : 'Unknown'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-slate-600">
+                          <span className="material-symbols-outlined text-sm">call_split</span>
+                          <span>Branch: {repo.default_branch || 'main'}</span>
+                        </div>
+                        {hasSupabase && (
+                          <div className="flex items-center gap-2 text-emerald-600">
+                            <span className="material-symbols-outlined text-sm">database</span>
+                            <span>Supabase: {meta.supabase_project_id}</span>
+                          </div>
+                        )}
+                        {hasVercel && (
+                          <div className="flex items-center gap-2 text-slate-600">
+                            <span className="material-symbols-outlined text-sm">cloud</span>
+                            <span>Deployed on Vercel</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <a
+                          href={repo.html_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-2 bg-[#0891b2] text-white text-sm text-center rounded-lg font-semibold hover:bg-[#0e7490] transition"
+                        >
+                          GitHub
+                        </a>
+                        {hasSupabase && meta.supabase_project_url && (
+                          <a
+                            href={meta.supabase_project_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-2 bg-emerald-600 text-white text-sm text-center rounded-lg font-semibold hover:bg-emerald-700 transition"
+                          >
+                            Supabase
+                          </a>
+                        )}
+                        {meta.vercel_project_url && (
+                          <a
+                            href={meta.vercel_project_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-2 bg-slate-700 text-white text-sm text-center rounded-lg font-semibold hover:bg-slate-800 transition"
+                          >
+                            Vercel
+                          </a>
+                        )}
+                        {meta.vercel_deployment_url && (
+                          <a
+                            href={meta.vercel_deployment_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-2 bg-blue-600 text-white text-sm text-center rounded-lg font-semibold hover:bg-blue-700 transition"
+                          >
+                            Live Site
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
-        ) : (
+        )}
+
+        {/* Kanban View */}
+        {activeView === 'kanban' && (
           <div>
-            <p style={{ marginBottom: '15px' }}>No active work session</p>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <input
-                type="text"
-                placeholder="Project name..."
-                value={newProjectName}
-                onChange={(e) => setNewProjectName(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && startWork()}
-                style={{ flex: 1 }}
-              />
-              <button onClick={startWork}>Start Working</button>
+            <h2
+              className="text-3xl font-bold text-slate-900 mb-6"
+              style={{ fontFamily: 'Fraunces, serif' }}
+            >
+              Kanban Board
+            </h2>
+            <div className="grid grid-cols-3 gap-6">
+              {['To Do', 'In Progress', 'Done'].map((column) => (
+                <div key={column} className="bg-slate-100 rounded-xl p-4">
+                  <h3 className="font-bold text-slate-700 mb-4">{column}</h3>
+                  <div className="text-center py-8 text-slate-400 text-sm bg-white rounded-lg border border-slate-200">
+                    Coming soon...
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
-      </section>
 
-      {/* Recent Work Section */}
-      <section style={{ marginBottom: '40px', padding: '20px', background: 'white', borderRadius: '8px' }}>
-        <h2 style={{ marginBottom: '20px' }}>Recent Work Sessions</h2>
-        
-        {workEntries.length === 0 ? (
-          <p>No work sessions yet.</p>
-        ) : (
-          <div style={{ display: 'grid', gap: '10px' }}>
-            {workEntries.slice(0, 10).map((work) => (
-              <div 
-                key={work.id} 
-                style={{ 
-                  padding: '12px', 
-                  border: '1px solid #ddd', 
-                  borderRadius: '4px',
-                  background: work.ended_at ? '#f5f5f5' : '#fff3cd'
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <strong>{work.project_name}</strong>
-                  <span style={{ fontSize: '14px', color: '#666' }}>
-                    {work.ended_at ? 'Completed' : 'In Progress'}
-                  </span>
-                </div>
-                <div style={{ fontSize: '14px', color: '#666', marginTop: '5px' }}>
-                  {new Date(work.started_at).toLocaleString()}
-                  {work.ended_at && ` - ${new Date(work.ended_at).toLocaleString()}`}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Projects Section */}
-      <section style={{ padding: '20px', background: 'white', borderRadius: '8px' }}>
-        <h2 style={{ marginBottom: '20px' }}>Projects ({projects.length})</h2>
-        
-        {projects.length === 0 ? (
-          <p>No projects yet. Start working on a project to create one!</p>
-        ) : (
-          <div style={{ display: 'grid', gap: '10px' }}>
-            {projects.map((project) => (
-              <div 
-                key={project.id} 
-                style={{ 
-                  padding: '12px', 
-                  border: '1px solid #ddd', 
-                  borderRadius: '4px'
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'between', alignItems: 'center' }}>
-                  <div>
-                    <strong>{project.project_name}</strong>
-                    <div style={{ fontSize: '14px', color: '#666', marginTop: '5px' }}>
-                      Last worked: {new Date(project.last_worked_at).toLocaleDateString()}
+        {/* Activity View */}
+        {activeView === 'activity' && (
+          <div>
+            <h2
+              className="text-3xl font-bold text-slate-900 mb-6"
+              style={{ fontFamily: 'Fraunces, serif' }}
+            >
+              Recent Activity
+            </h2>
+            {activityLoading ? (
+              <div className="text-center py-12 text-slate-500">Loading activity...</div>
+            ) : activityFeed.length === 0 ? (
+              <div className="text-center py-12 text-slate-500">No recent activity</div>
+            ) : (
+              <div className="space-y-4">
+                {activityFeed.map((entry) => (
+                  <div
+                    key={entry.id}
+                    className="bg-white rounded-xl p-4 border border-slate-200"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="material-symbols-outlined text-[#0891b2]">
+                        {entry.user_type === 'agent' ? 'smart_toy' : 'person'}
+                      </span>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-slate-900">
+                          {entry.user_name} worked on{' '}
+                          <span className="text-[#0891b2]">{entry.project_name}</span>
+                        </p>
+                        {entry.task_description && (
+                          <p className="text-xs text-slate-600">{entry.task_description}</p>
+                        )}
+                        <p className="text-xs text-slate-500 mt-1">
+                          {entry.duration_minutes} minutes • {formatDate(entry.ended_at_iso)}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                  <span style={{ 
-                    fontSize: '12px', 
-                    padding: '4px 8px', 
-                    background: project.status === 'active' ? '#4caf50' : '#999',
-                    color: 'white',
-                    borderRadius: '3px'
-                  }}>
-                    {project.status}
-                  </span>
-                </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
         )}
-      </section>
+
+        {/* Settings View */}
+        {activeView === 'settings' && (
+          <div>
+            <h2
+              className="text-3xl font-bold text-slate-900 mb-6"
+              style={{ fontFamily: 'Fraunces, serif' }}
+            >
+              Settings
+            </h2>
+            <div className="max-w-2xl">
+              <div className="bg-white rounded-xl p-6 space-y-6">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    User ID (Email)
+                  </label>
+                  <input
+                    type="text"
+                    value={settingsUserId}
+                    readOnly
+                    className="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-500 cursor-not-allowed"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">
+                    Managed by Supabase authentication
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Display Name
+                  </label>
+                  <input
+                    type="text"
+                    value={settingsUserName}
+                    onChange={(e) => setSettingsUserName(e.target.value)}
+                    className="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg"
+                    placeholder="Your Name"
+                  />
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="px-6 py-2 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition"
+                >
+                  Logout
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* Start Work Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+            <h3
+              className="text-2xl font-bold text-slate-900 mb-4"
+              style={{ fontFamily: 'Fraunces, serif' }}
+            >
+              Start Working
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Select Project
+                </label>
+                <select
+                  value={modalProject}
+                  onChange={(e) => setModalProject(e.target.value)}
+                  className="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
+                >
+                  <option value="">Select a project...</option>
+                  {repos.map((repo) => (
+                    <option key={repo.name} value={repo.name}>
+                      {repo.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  What are you working on?
+                </label>
+                <textarea
+                  value={modalDescription}
+                  onChange={(e) => setModalDescription(e.target.value)}
+                  className="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg"
+                  rows={3}
+                  placeholder="Describe what you're working on..."
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={startWork}
+                  className="flex-1 px-4 py-2 bg-[#0891b2] text-white rounded-lg font-semibold hover:bg-[#0e7490] transition"
+                >
+                  Start
+                </button>
+                <button
+                  onClick={hideStartWorkModal}
+                  className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg font-semibold hover:bg-slate-300 transition"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
